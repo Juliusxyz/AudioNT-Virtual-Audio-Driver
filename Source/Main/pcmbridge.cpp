@@ -153,15 +153,15 @@ void AudioNtMicrophoneBridgeGetStats(AudioNtMicrophoneStats* stats)
 
     stats->Size = sizeof(AudioNtMicrophoneStats);
     stats->Version = AUDIONT_CONTROL_PROTOCOL_VERSION;
-    stats->LastSequence = static_cast<uint64_t>(InterlockedCompareExchange64(
+    stats->LastSequence = static_cast<AudioNtUInt64>(InterlockedCompareExchange64(
         &g_AudioNtMicrophoneBridge.LastSequence,
         0,
         0));
-    stats->DroppedBytes = static_cast<uint64_t>(InterlockedCompareExchange64(
+    stats->DroppedBytes = static_cast<AudioNtUInt64>(InterlockedCompareExchange64(
         &g_AudioNtMicrophoneBridge.DroppedBytes,
         0,
         0));
-    stats->UnderflowBytes = static_cast<uint64_t>(InterlockedCompareExchange64(
+    stats->UnderflowBytes = static_cast<AudioNtUInt64>(InterlockedCompareExchange64(
         &g_AudioNtMicrophoneBridge.UnderflowBytes,
         0,
         0));

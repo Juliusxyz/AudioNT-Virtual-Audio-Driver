@@ -6,7 +6,17 @@
 #pragma once
 
 #include <stddef.h>
-#include <stdint.h>
+
+#if defined(_MSC_VER)
+using AudioNtUInt32 = unsigned __int32;
+using AudioNtUInt64 = unsigned __int64;
+#else
+using AudioNtUInt32 = __UINT32_TYPE__;
+using AudioNtUInt64 = __UINT64_TYPE__;
+#endif
+
+static_assert(sizeof(AudioNtUInt32) == 4, "AudioNT wire uint32 must be 4 bytes");
+static_assert(sizeof(AudioNtUInt64) == 8, "AudioNT wire uint64 must be 8 bytes");
 
 #define AUDIONT_CONTROL_PROTOCOL_VERSION 1u
 #define AUDIONT_MIC_SAMPLE_RATE 48000u
@@ -30,33 +40,33 @@
 
 struct AudioNtControlCapabilities
 {
-    uint32_t Size;
-    uint32_t Version;
-    uint32_t SampleRate;
-    uint32_t Channels;
-    uint32_t BitsPerSample;
-    uint32_t MaxFramesPerWrite;
+    AudioNtUInt32 Size;
+    AudioNtUInt32 Version;
+    AudioNtUInt32 SampleRate;
+    AudioNtUInt32 Channels;
+    AudioNtUInt32 BitsPerSample;
+    AudioNtUInt32 MaxFramesPerWrite;
 };
 
 struct AudioNtMicrophoneWriteHeader
 {
-    uint32_t HeaderSize;
-    uint32_t Version;
-    uint64_t Sequence;
-    uint32_t FrameCount;
-    uint32_t PayloadBytes;
+    AudioNtUInt32 HeaderSize;
+    AudioNtUInt32 Version;
+    AudioNtUInt64 Sequence;
+    AudioNtUInt32 FrameCount;
+    AudioNtUInt32 PayloadBytes;
 };
 
 struct AudioNtMicrophoneStats
 {
-    uint32_t Size;
-    uint32_t Version;
-    uint64_t LastSequence;
-    uint64_t DroppedBytes;
-    uint64_t UnderflowBytes;
+    AudioNtUInt32 Size;
+    AudioNtUInt32 Version;
+    AudioNtUInt64 LastSequence;
+    AudioNtUInt64 DroppedBytes;
+    AudioNtUInt64 UnderflowBytes;
 };
 
-enum class AudioNtProtocolValidation : uint32_t
+enum class AudioNtProtocolValidation : AudioNtUInt32
 {
     Valid = 0,
     NullHeader,
