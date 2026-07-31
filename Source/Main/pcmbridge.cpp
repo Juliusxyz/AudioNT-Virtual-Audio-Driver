@@ -11,91 +11,109 @@
 
 namespace
 {
-constexpr ULONG AudioNtPcmBridgeCapacity = 48000 * 2 * 4;
+constexpr ULONG AudioNtMicrophoneBridgeCapacity =
+    AUDIONT_MIC_SAMPLE_RATE * sizeof(float) / 5;
 constexpr ULONG AudioNtPcmBridgePoolTag = 'BrNA';
 
-struct AudioNtPcmBridgeState
+struct AudioNtMicrophoneBridgeState
 {
     KSPIN_LOCK Lock;
     AudioNtPcmRing Ring;
     BYTE* Storage;
+    volatile LONG64 LastSequence;
     volatile LONG64 DroppedBytes;
     volatile LONG64 UnderflowBytes;
 };
 
-AudioNtPcmBridgeState g_AudioNtPcmBridge{};
+AudioNtMicrophoneBridgeState g_AudioNtMicrophoneBridge{};
 }
 
 #pragma code_seg("INIT")
-NTSTATUS AudioNtPcmBridgeInitialize()
+NTSTATUS AudioNtMicrophoneBridgeInitialize()
 {
-    KeInitializeSpinLock(&g_AudioNtPcmBridge.Lock);
-    g_AudioNtPcmBridge.Storage = static_cast<BYTE*>(ExAllocatePool2(
+    KeInitializeSpinLock(&g_AudioNtMicrophoneBridge.Lock);
+    g_AudioNtMicrophoneBridge.Storage = static_cast<BYTE*>(ExAllocatePool2(
         POOL_FLAG_NON_PAGED,
-        AudioNtPcmBridgeCapacity,
+        AudioNtMicrophoneBridgeCapacity,
         AudioNtPcmBridgePoolTag));
-    if (g_AudioNtPcmBridge.Storage == nullptr)
+    if (g_AudioNtMicrophoneBridge.Storage == nullptr)
     {
         return STATUS_INSUFFICIENT_RESOURCES;
     }
 
-    RtlZeroMemory(g_AudioNtPcmBridge.Storage, AudioNtPcmBridgeCapacity);
+    RtlZeroMemory(
+        g_AudioNtMicrophoneBridge.Storage,
+        AudioNtMicrophoneBridgeCapacity);
     AudioNtPcmRingInitialize(
-        &g_AudioNtPcmBridge.Ring,
-        g_AudioNtPcmBridge.Storage,
-        AudioNtPcmBridgeCapacity);
-    g_AudioNtPcmBridge.DroppedBytes = 0;
-    g_AudioNtPcmBridge.UnderflowBytes = 0;
+        &g_AudioNtMicrophoneBridge.Ring,
+        g_AudioNtMicrophoneBridge.Storage,
+        AudioNtMicrophoneBridgeCapacity);
+    g_AudioNtMicrophoneBridge.LastSequence = 0;
+    g_AudioNtMicrophoneBridge.DroppedBytes = 0;
+    g_AudioNtMicrophoneBridge.UnderflowBytes = 0;
     return STATUS_SUCCESS;
 }
 
 #pragma code_seg("PAGE")
-void AudioNtPcmBridgeShutdown()
+void AudioNtMicrophoneBridgeShutdown()
 {
     PAGED_CODE();
-    if (g_AudioNtPcmBridge.Storage != nullptr)
+    if (g_AudioNtMicrophoneBridge.Storage != nullptr)
     {
-        ExFreePoolWithTag(g_AudioNtPcmBridge.Storage, AudioNtPcmBridgePoolTag);
-        g_AudioNtPcmBridge.Storage = nullptr;
+        ExFreePoolWithTag(
+            g_AudioNtMicrophoneBridge.Storage,
+            AudioNtPcmBridgePoolTag);
+        g_AudioNtMicrophoneBridge.Storage = nullptr;
     }
-    AudioNtPcmRingInitialize(&g_AudioNtPcmBridge.Ring, nullptr, 0);
+    AudioNtPcmRingInitialize(&g_AudioNtMicrophoneBridge.Ring, nullptr, 0);
 }
 
 #pragma code_seg()
-void AudioNtPcmBridgeReset()
+void AudioNtMicrophoneBridgeReset()
 {
     KIRQL oldIrql;
-    KeAcquireSpinLock(&g_AudioNtPcmBridge.Lock, &oldIrql);
+    KeAcquireSpinLock(&g_AudioNtMicrophoneBridge.Lock, &oldIrql);
     AudioNtPcmRingInitialize(
-        &g_AudioNtPcmBridge.Ring,
-        g_AudioNtPcmBridge.Storage,
-        g_AudioNtPcmBridge.Storage == nullptr ? 0 : AudioNtPcmBridgeCapacity);
-    KeReleaseSpinLock(&g_AudioNtPcmBridge.Lock, oldIrql);
+        &g_AudioNtMicrophoneBridge.Ring,
+        g_AudioNtMicrophoneBridge.Storage,
+        g_AudioNtMicrophoneBridge.Storage == nullptr
+            ? 0
+            : AudioNtMicrophoneBridgeCapacity);
+    g_AudioNtMicrophoneBridge.LastSequence = 0;
+    g_AudioNtMicrophoneBridge.DroppedBytes = 0;
+    g_AudioNtMicrophoneBridge.UnderflowBytes = 0;
+    KeReleaseSpinLock(&g_AudioNtMicrophoneBridge.Lock, oldIrql);
 }
 
-void AudioNtPcmBridgeWrite(const BYTE* source, ULONG byteCount)
+void AudioNtMicrophoneBridgeWrite(
+    const BYTE* source,
+    ULONG byteCount,
+    ULONGLONG sequence)
 {
-    if (source == nullptr || byteCount == 0 || g_AudioNtPcmBridge.Storage == nullptr)
+    if (source == nullptr ||
+        byteCount == 0 ||
+        g_AudioNtMicrophoneBridge.Storage == nullptr)
     {
         return;
     }
 
     KIRQL oldIrql;
-    KeAcquireSpinLock(&g_AudioNtPcmBridge.Lock, &oldIrql);
+    KeAcquireSpinLock(&g_AudioNtMicrophoneBridge.Lock, &oldIrql);
     const size_t dropped = AudioNtPcmRingWrite(
-        &g_AudioNtPcmBridge.Ring,
+        &g_AudioNtMicrophoneBridge.Ring,
         source,
         byteCount);
-    KeReleaseSpinLock(&g_AudioNtPcmBridge.Lock, oldIrql);
+    g_AudioNtMicrophoneBridge.LastSequence = static_cast<LONG64>(sequence);
+    KeReleaseSpinLock(&g_AudioNtMicrophoneBridge.Lock, oldIrql);
     if (dropped > 0)
     {
         InterlockedAdd64(
-            &g_AudioNtPcmBridge.DroppedBytes,
+            &g_AudioNtMicrophoneBridge.DroppedBytes,
             static_cast<LONG64>(dropped));
     }
 }
 
-ULONG AudioNtPcmBridgeRead(BYTE* destination, ULONG byteCount)
+ULONG AudioNtMicrophoneBridgeRead(BYTE* destination, ULONG byteCount)
 {
     if (destination == nullptr || byteCount == 0)
     {
@@ -103,15 +121,15 @@ ULONG AudioNtPcmBridgeRead(BYTE* destination, ULONG byteCount)
     }
 
     size_t bytesRead = 0;
-    if (g_AudioNtPcmBridge.Storage != nullptr)
+    if (g_AudioNtMicrophoneBridge.Storage != nullptr)
     {
         KIRQL oldIrql;
-        KeAcquireSpinLock(&g_AudioNtPcmBridge.Lock, &oldIrql);
+        KeAcquireSpinLock(&g_AudioNtMicrophoneBridge.Lock, &oldIrql);
         bytesRead = AudioNtPcmRingRead(
-            &g_AudioNtPcmBridge.Ring,
+            &g_AudioNtMicrophoneBridge.Ring,
             destination,
             byteCount);
-        KeReleaseSpinLock(&g_AudioNtPcmBridge.Lock, oldIrql);
+        KeReleaseSpinLock(&g_AudioNtMicrophoneBridge.Lock, oldIrql);
     }
 
     if (bytesRead < byteCount)
@@ -119,9 +137,32 @@ ULONG AudioNtPcmBridgeRead(BYTE* destination, ULONG byteCount)
         const ULONG missingBytes = byteCount - static_cast<ULONG>(bytesRead);
         RtlZeroMemory(destination + bytesRead, missingBytes);
         InterlockedAdd64(
-            &g_AudioNtPcmBridge.UnderflowBytes,
+            &g_AudioNtMicrophoneBridge.UnderflowBytes,
             static_cast<LONG64>(missingBytes));
     }
 
     return static_cast<ULONG>(bytesRead);
+}
+
+void AudioNtMicrophoneBridgeGetStats(AudioNtMicrophoneStats* stats)
+{
+    if (stats == nullptr)
+    {
+        return;
+    }
+
+    stats->Size = sizeof(AudioNtMicrophoneStats);
+    stats->Version = AUDIONT_CONTROL_PROTOCOL_VERSION;
+    stats->LastSequence = static_cast<uint64_t>(InterlockedCompareExchange64(
+        &g_AudioNtMicrophoneBridge.LastSequence,
+        0,
+        0));
+    stats->DroppedBytes = static_cast<uint64_t>(InterlockedCompareExchange64(
+        &g_AudioNtMicrophoneBridge.DroppedBytes,
+        0,
+        0));
+    stats->UnderflowBytes = static_cast<uint64_t>(InterlockedCompareExchange64(
+        &g_AudioNtMicrophoneBridge.UnderflowBytes,
+        0,
+        0));
 }

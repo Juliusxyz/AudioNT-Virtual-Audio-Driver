@@ -22,6 +22,7 @@ Abstract:
 #include "definitions.h"
 #include "endpoints.h"
 #include "minipairs.h"
+#include "control.h"
 #include "pcmbridge.h"
 
 typedef void (*fnPcDriverUnload) (PDRIVER_OBJECT);
@@ -104,6 +105,8 @@ Environment:
     {
         goto Done;
     }
+
+    AudioNtControlShutdown(DriverObject);
     
     //
     // Invoke first the port unload.
@@ -113,7 +116,7 @@ Environment:
         gPCDriverUnloadRoutine(DriverObject);
     }
 
-    AudioNtPcmBridgeShutdown();
+    AudioNtMicrophoneBridgeShutdown();
 
     //
     // Unload WDF driver object. 
@@ -327,10 +330,10 @@ Return Value:
         DPF(D_ERROR, ("Registry Configuration error 0x%x", ntStatus)),
         Done);
 
-    ntStatus = AudioNtPcmBridgeInitialize();
+    ntStatus = AudioNtMicrophoneBridgeInitialize();
     IF_FAILED_ACTION_JUMP(
         ntStatus,
-        DPF(D_ERROR, ("AudioNtPcmBridgeInitialize failed, 0x%x", ntStatus)),
+        DPF(D_ERROR, ("AudioNtMicrophoneBridgeInitialize failed, 0x%x", ntStatus)),
         Done);
 
     //
@@ -355,6 +358,12 @@ Return Value:
     gPCDriverUnloadRoutine = DriverObject->DriverUnload;
     DriverObject->DriverUnload = DriverUnload;
 
+    ntStatus = AudioNtControlInitialize(DriverObject);
+    IF_FAILED_ACTION_JUMP(
+        ntStatus,
+        DPF(D_ERROR, ("AudioNtControlInitialize failed, 0x%x", ntStatus)),
+        Done);
+
     //
     // All done.
     //
@@ -364,13 +373,21 @@ Done:
 
     if (!NT_SUCCESS(ntStatus))
     {
+        AudioNtControlShutdown(DriverObject);
+
+        if (gPCDriverUnloadRoutine != NULL)
+        {
+            gPCDriverUnloadRoutine(DriverObject);
+            gPCDriverUnloadRoutine = NULL;
+        }
+
         if (WdfGetDriver() != NULL)
         {
             WdfDriverMiniportUnload(WdfGetDriver());
         }
 
         ReleaseRegistryStringBuffer();
-        AudioNtPcmBridgeShutdown();
+        AudioNtMicrophoneBridgeShutdown();
     }
     
     return ntStatus;

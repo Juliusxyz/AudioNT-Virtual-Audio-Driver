@@ -1199,9 +1199,9 @@ NTSTATUS CMiniportWaveRTStream::SetState
 
             KeReleaseSpinLock(&m_PositionSpinLock, oldIrql);
 
-            if (!m_bCapture)
+            if (m_bCapture)
             {
-                AudioNtPcmBridgeReset();
+                AudioNtMicrophoneBridgeReset();
             }
 
             // Wait until all work items are completed.
@@ -1415,7 +1415,7 @@ ByteDisplacement - # of bytes to process.
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
         
-        AudioNtPcmBridgeRead(m_pDmaBuffer + bufferOffset, runWrite);
+        AudioNtMicrophoneBridgeRead(m_pDmaBuffer + bufferOffset, runWrite);
            	
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
@@ -1447,7 +1447,6 @@ ByteDisplacement - # of bytes to process.
     while (ByteDisplacement > 0)
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
-        AudioNtPcmBridgeWrite(m_pDmaBuffer + bufferOffset, runWrite);
         if (!g_DoNotCreateDataFiles)
         {
             m_SaveData.WriteData(m_pDmaBuffer + bufferOffset, runWrite);
