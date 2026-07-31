@@ -27,7 +27,7 @@ enum class AudioNtBusId : unsigned long
 
 constexpr bool AudioNtIsRenderDevice(eDeviceType deviceType)
 {
-    return deviceType >= eAudioNtGameDevice && deviceType <= eAudioNtAuxDevice;
+    return deviceType <= eAudioNtAuxDevice;
 }
 
 constexpr AudioNtBusId AudioNtBusIdForDevice(eDeviceType deviceType)
