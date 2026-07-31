@@ -318,6 +318,7 @@
     <ClCompile Include="minwavert.cpp" />
     <ClCompile Include="minwavertstream.cpp" />
     <ClCompile Include="newdelete.cpp" />
+    <ClCompile Include="pcmbridge.cpp" />
     <ResourceCompile Include="VirtualAudioDriver.rc" />
   </ItemGroup>
   <ItemGroup>

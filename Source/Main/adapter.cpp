@@ -22,6 +22,7 @@ Abstract:
 #include "definitions.h"
 #include "endpoints.h"
 #include "minipairs.h"
+#include "pcmbridge.h"
 
 typedef void (*fnPcDriverUnload) (PDRIVER_OBJECT);
 fnPcDriverUnload gPCDriverUnloadRoutine = NULL;
@@ -111,6 +112,8 @@ Environment:
     {
         gPCDriverUnloadRoutine(DriverObject);
     }
+
+    AudioNtPcmBridgeShutdown();
 
     //
     // Unload WDF driver object. 
@@ -324,6 +327,12 @@ Return Value:
         DPF(D_ERROR, ("Registry Configuration error 0x%x", ntStatus)),
         Done);
 
+    ntStatus = AudioNtPcmBridgeInitialize();
+    IF_FAILED_ACTION_JUMP(
+        ntStatus,
+        DPF(D_ERROR, ("AudioNtPcmBridgeInitialize failed, 0x%x", ntStatus)),
+        Done);
+
     //
     // Tell the class driver to initialize the driver.
     //
@@ -361,6 +370,7 @@ Done:
         }
 
         ReleaseRegistryStringBuffer();
+        AudioNtPcmBridgeShutdown();
     }
     
     return ntStatus;
@@ -842,4 +852,3 @@ Return Value:
 }
 
 #pragma code_seg()
-
