@@ -1,6 +1,20 @@
 > [!WARNING]
 > This software is in beta and requires test signing to be enabled.
 
+## AudioNT fork status
+
+The `codex/five-endpoint-alpha` branch is a test-only AudioNT integration
+branch. It exposes exactly four virtual render endpoints (`AudioNT - Game`,
+`AudioNT - Chat`, `AudioNT - Media`, and `AudioNT - AUX`) plus one virtual
+capture endpoint (`AudioNT - Microphone`) from the root hardware ID
+`ROOT\AudioNTVirtualAudio`.
+
+The public microphone accepts only 48 kHz, 32-bit IEEE-float mono frames from
+the privileged `\\.\AudioNTVirtualAudio` control transport. Render endpoints
+do not feed the microphone ring. This branch is installed only on the dedicated
+AudioNT Windows VM with test signing enabled; it is not a public production
+driver package.
+
 > [!NOTE]
 > Software Developers/Organizations: Looking to implement Virtual speakers/mics into your app? For advanced/custom functionality like named pipes, shared memory buffers (for no-latency audio), direct integration with your existing apps, and more; Contact us for quotes on a custom build! contact@mikethetech.com
 
