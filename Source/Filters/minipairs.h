@@ -71,28 +71,54 @@ PHYSICALCONNECTIONTABLE SpeakerTopologyPhysicalConnections[] =
     }
 };
 
-static
-ENDPOINT_MINIPAIR SpeakerMiniports =
-{
-    eSpeakerDevice,
-    L"TopologySpeaker",                                     // make sure this or the template name matches with KSNAME_TopologySpeaker in the inf's [Strings] section 
-    NULL,                                                   // optional template name
-    CreateMiniportTopologyVirtualAudioDriver,
-    &SpeakerTopoMiniportFilterDescriptor,
-    0, NULL,                                                // Interface properties
-    L"WaveSpeaker",                                         // make sure this or the template name matches with KSNAME_WaveSpeaker in the inf's [Strings] section
-    NULL,                                                   // optional template name
-    CreateMiniportWaveRTVirtualAudioDriver,
-    &SpeakerWaveMiniportFilterDescriptor,
-    0,                                                      // Interface properties
-    NULL,
-    SPEAKER_DEVICE_MAX_CHANNELS,
-    SpeakerPinDeviceFormatsAndModes,
-    SIZEOF_ARRAY(SpeakerPinDeviceFormatsAndModes),
-    SpeakerTopologyPhysicalConnections,
-    SIZEOF_ARRAY(SpeakerTopologyPhysicalConnections),
-    ENDPOINT_NO_FLAGS,
-};
+#define AUDIONT_RENDER_MINIPAIR(symbol, deviceType, topologyName, waveName) \
+static ENDPOINT_MINIPAIR symbol =                                      \
+{                                                                      \
+    deviceType,                                                        \
+    topologyName,                                                      \
+    NULL,                                                              \
+    CreateMiniportTopologyVirtualAudioDriver,                          \
+    &SpeakerTopoMiniportFilterDescriptor,                              \
+    0, NULL,                                                           \
+    waveName,                                                          \
+    NULL,                                                              \
+    CreateMiniportWaveRTVirtualAudioDriver,                            \
+    &SpeakerWaveMiniportFilterDescriptor,                              \
+    0,                                                                 \
+    NULL,                                                              \
+    SPEAKER_DEVICE_MAX_CHANNELS,                                       \
+    SpeakerPinDeviceFormatsAndModes,                                   \
+    SIZEOF_ARRAY(SpeakerPinDeviceFormatsAndModes),                     \
+    SpeakerTopologyPhysicalConnections,                               \
+    SIZEOF_ARRAY(SpeakerTopologyPhysicalConnections),                  \
+    ENDPOINT_NO_FLAGS,                                                 \
+}
+
+AUDIONT_RENDER_MINIPAIR(
+    GameMiniports,
+    eAudioNtGameDevice,
+    L"TopologyGame",
+    L"WaveGame");
+
+AUDIONT_RENDER_MINIPAIR(
+    ChatMiniports,
+    eAudioNtChatDevice,
+    L"TopologyChat",
+    L"WaveChat");
+
+AUDIONT_RENDER_MINIPAIR(
+    MediaMiniports,
+    eAudioNtMediaDevice,
+    L"TopologyMedia",
+    L"WaveMedia");
+
+AUDIONT_RENDER_MINIPAIR(
+    AuxMiniports,
+    eAudioNtAuxDevice,
+    L"TopologyAux",
+    L"WaveAux");
+
+#undef AUDIONT_RENDER_MINIPAIR
 
 //
 // Capture miniports.
@@ -119,15 +145,15 @@ PHYSICALCONNECTIONTABLE MicArray1TopologyPhysicalConnections[] =
 };
 
 static
-ENDPOINT_MINIPAIR MicArray1Miniports =
+ENDPOINT_MINIPAIR MicrophoneMiniports =
 {
-    eMicArrayDevice1,
-    L"TopologyMicArray1",                   // make sure this or the template name matches with KSNAME_TopologyMicArray1 in the inf's [Strings] section 
+    eAudioNtMicrophoneDevice,
+    L"TopologyMicrophone",
     NULL,                                   // optional template name
     CreateMicArrayMiniportTopology,
     &MicArray1TopoMiniportFilterDescriptor,
     0, NULL,                                // Interface properties
-    L"WaveMicArray1",                       // make sure this or the tempalte name matches with KSNAME_WaveMicArray1 in the inf's [Strings] section
+    L"WaveMicrophone",
     NULL,                                   // optional template name
     CreateMiniportWaveRTVirtualAudioDriver,
     &MicArrayWaveMiniportFilterDescriptor,
@@ -150,7 +176,10 @@ ENDPOINT_MINIPAIR MicArray1Miniports =
 static
 PENDPOINT_MINIPAIR  g_RenderEndpoints[] = 
 {
-    &SpeakerMiniports,
+    &GameMiniports,
+    &ChatMiniports,
+    &MediaMiniports,
+    &AuxMiniports,
 };
 
 #define g_cRenderEndpoints  (SIZEOF_ARRAY(g_RenderEndpoints))
@@ -163,7 +192,7 @@ PENDPOINT_MINIPAIR  g_RenderEndpoints[] =
 static
 PENDPOINT_MINIPAIR  g_CaptureEndpoints[] =
 {
-    &MicArray1Miniports,
+    &MicrophoneMiniports,
 };
 
 #define g_cCaptureEndpoints (SIZEOF_ARRAY(g_CaptureEndpoints))
