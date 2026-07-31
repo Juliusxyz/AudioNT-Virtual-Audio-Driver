@@ -6,7 +6,6 @@
 #pragma once
 
 #include <stddef.h>
-#include <stdint.h>
 
 #ifndef AUDIONT_PCM_COPY
 #include <string.h>
@@ -16,7 +15,7 @@
 
 struct AudioNtPcmRing
 {
-    uint8_t* Data;
+    unsigned char* Data;
     size_t Capacity;
     size_t ReadOffset;
     size_t WriteOffset;
@@ -25,7 +24,7 @@ struct AudioNtPcmRing
 
 static inline void AudioNtPcmRingInitialize(
     AudioNtPcmRing* ring,
-    uint8_t* storage,
+    unsigned char* storage,
     size_t capacity)
 {
     if (ring == nullptr)
@@ -42,7 +41,7 @@ static inline void AudioNtPcmRingInitialize(
 
 static inline size_t AudioNtPcmRingWrite(
     AudioNtPcmRing* ring,
-    const uint8_t* source,
+    const unsigned char* source,
     size_t byteCount)
 {
     if (
@@ -95,7 +94,7 @@ static inline size_t AudioNtPcmRingWrite(
 
 static inline size_t AudioNtPcmRingRead(
     AudioNtPcmRing* ring,
-    uint8_t* destination,
+    unsigned char* destination,
     size_t requestedBytes)
 {
     if (
