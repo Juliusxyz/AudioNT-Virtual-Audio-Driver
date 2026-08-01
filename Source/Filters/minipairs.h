@@ -102,8 +102,8 @@ static ENDPOINT_MINIPAIR symbol =                                      \
     NULL,                                                              \
     CreateMiniportWaveRTVirtualAudioDriver,                            \
     &SpeakerWaveMiniportFilterDescriptor,                              \
-    0,                                                                 \
-    NULL,                                                              \
+    SIZEOF_ARRAY(endpoint##RenderInterfaceProperties),                 \
+    endpoint##RenderInterfaceProperties,                               \
     SPEAKER_DEVICE_MAX_CHANNELS,                                       \
     SpeakerPinDeviceFormatsAndModes,                                   \
     SIZEOF_ARRAY(SpeakerPinDeviceFormatsAndModes),                     \

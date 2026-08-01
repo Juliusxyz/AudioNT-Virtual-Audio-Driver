@@ -72,6 +72,12 @@ def main() -> int:
         errors.append("render interfaces do not publish a Windows adapter friendly name")
     if "endpoint##RenderInterfaceProperties" not in minipairs:
         errors.append("render minipairs do not bind their endpoint-specific interface properties")
+    wave_binding = (
+        "&SpeakerWaveMiniportFilterDescriptor,                              \\\n"
+        "    SIZEOF_ARRAY(endpoint##RenderInterfaceProperties),"
+    )
+    if wave_binding not in minipairs:
+        errors.append("render WaveRT interfaces do not bind their endpoint-specific friendly names")
 
     if "&KSNODETYPE_SPEAKER" in topology:
         errors.append("hard-coded speaker endpoint category remains")
