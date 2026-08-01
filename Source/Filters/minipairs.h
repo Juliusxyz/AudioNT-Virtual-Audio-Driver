@@ -97,30 +97,30 @@ static ENDPOINT_MINIPAIR symbol =                                      \
 AUDIONT_RENDER_MINIPAIR(
     GameMiniports,
     eAudioNtGameDevice,
-    L"TopologyGame",
+    L"AudioNTTopologyGame",
     &GameSpeakerTopoMiniportFilterDescriptor,
-    L"WaveGame");
+    L"AudioNTWaveGame");
 
 AUDIONT_RENDER_MINIPAIR(
     ChatMiniports,
     eAudioNtChatDevice,
-    L"TopologyChat",
+    L"AudioNTTopologyChat",
     &ChatSpeakerTopoMiniportFilterDescriptor,
-    L"WaveChat");
+    L"AudioNTWaveChat");
 
 AUDIONT_RENDER_MINIPAIR(
     MediaMiniports,
     eAudioNtMediaDevice,
-    L"TopologyMedia",
+    L"AudioNTTopologyMedia",
     &MediaSpeakerTopoMiniportFilterDescriptor,
-    L"WaveMedia");
+    L"AudioNTWaveMedia");
 
 AUDIONT_RENDER_MINIPAIR(
     AuxMiniports,
     eAudioNtAuxDevice,
-    L"TopologyAux",
+    L"AudioNTTopologyAux",
     &AuxSpeakerTopoMiniportFilterDescriptor,
-    L"WaveAux");
+    L"AudioNTWaveAux");
 
 #undef AUDIONT_RENDER_MINIPAIR
 
@@ -152,12 +152,12 @@ static
 ENDPOINT_MINIPAIR MicrophoneMiniports =
 {
     eAudioNtMicrophoneDevice,
-    L"TopologyMicrophone",
+    L"AudioNTTopologyMicrophone",
     NULL,                                   // optional template name
     CreateMicArrayMiniportTopology,
     &MicArray1TopoMiniportFilterDescriptor,
     0, NULL,                                // Interface properties
-    L"WaveMicrophone",
+    L"AudioNTWaveMicrophone",
     NULL,                                   // optional template name
     CreateMiniportWaveRTVirtualAudioDriver,
     &MicArrayWaveMiniportFilterDescriptor,

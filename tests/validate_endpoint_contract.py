@@ -17,6 +17,19 @@ EXPECTED_ENDPOINTS = {
     ("capture", "AudioNT - Microphone", "audiont.capture.microphone"),
 }
 
+EXPECTED_REFERENCE_STRINGS = {
+    "KSNAME_WaveGame": "AudioNTWaveGame",
+    "KSNAME_TopologyGame": "AudioNTTopologyGame",
+    "KSNAME_WaveChat": "AudioNTWaveChat",
+    "KSNAME_TopologyChat": "AudioNTTopologyChat",
+    "KSNAME_WaveMedia": "AudioNTWaveMedia",
+    "KSNAME_TopologyMedia": "AudioNTTopologyMedia",
+    "KSNAME_WaveAux": "AudioNTWaveAux",
+    "KSNAME_TopologyAux": "AudioNTTopologyAux",
+    "KSNAME_WaveMicrophone": "AudioNTWaveMicrophone",
+    "KSNAME_TopologyMicrophone": "AudioNTTopologyMicrophone",
+}
+
 
 @dataclass(frozen=True)
 class Endpoint:
@@ -143,6 +156,11 @@ def validate(inf_path: Path) -> list[str]:
     strings = parse_strings(sections.get("Strings", []))
     errors: list[str] = []
 
+    for key, expected in EXPECTED_REFERENCE_STRINGS.items():
+        actual = strings.get(key)
+        if actual != expected:
+            errors.append(f"reference string {key} must be {expected!r}, got {actual!r}")
+
     interfaces = sections.get("VIRTUALAUDIODRIVER_SA.NT.Interfaces", [])
     topology_declarations: dict[str, str] = {}
     for declaration in interfaces:
@@ -171,7 +189,7 @@ def validate(inf_path: Path) -> list[str]:
                 continue
             try:
                 wave_name = expand_percent(fields[1], strings)
-                topology_name = f"Topology{wave_name.removeprefix('Wave')}"
+                topology_name = wave_name.replace("Wave", "Topology", 1)
                 topology_install_section_name = topology_declarations.get(topology_name)
                 if topology_install_section_name is None:
                     raise ValueError(f"missing topology interface for {wave_name}")
