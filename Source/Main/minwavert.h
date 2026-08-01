@@ -228,7 +228,7 @@ protected:
 #pragma code_seg()
     BOOL IsRenderDevice()
     {
-        return m_DeviceType == eSpeakerDevice ? TRUE : FALSE;
+        return AudioNtIsRenderDevice(m_DeviceType) ? TRUE : FALSE;
     }
 
     BOOL IsSystemRenderPin(ULONG nPinId);

@@ -375,16 +375,7 @@ Return Value:
 
     NTSTATUS ntStatus;
 
-    //
-    // This sample supports only one instance of this object.
-    // (b/c of CSaveData's static members and Bluetooth HFP logic). 
-    //
-    if (InterlockedCompareExchange(&CAdapterCommon::m_AdapterInstances, 1, 0) != 0)
-    {
-        ntStatus = STATUS_DEVICE_BUSY;
-        DPF(D_ERROR, ("NewAdapterCommon failed, only one instance is allowed"));
-        goto Done;
-    }
+    InterlockedIncrement(&CAdapterCommon::m_AdapterInstances);
     
     //
     // Allocate an adapter object.
@@ -392,6 +383,7 @@ Return Value:
     CAdapterCommon *p = new(PoolFlags, MINADAPTER_POOLTAG) CAdapterCommon(UnknownOuter);
     if (p == NULL)
     {
+        InterlockedDecrement(&CAdapterCommon::m_AdapterInstances);
         ntStatus = STATUS_INSUFFICIENT_RESOURCES;
         DPF(D_ERROR, ("NewAdapterCommon failed, 0x%x", ntStatus));
         goto Done;
@@ -437,7 +429,6 @@ Return Value:
         m_pHW = NULL;
     }
     
-    CSaveData::DestroyWorkItems();
     SAFE_RELEASE(m_pPortClsEtwHelper);
     SAFE_RELEASE(m_pServiceGroupWave);
  
@@ -447,8 +438,12 @@ Return Value:
         m_WdfDevice = NULL;
     }
 
-    InterlockedDecrement(&CAdapterCommon::m_AdapterInstances);
-    ASSERT(CAdapterCommon::m_AdapterInstances == 0);
+    const LONG remainingInstances = InterlockedDecrement(&CAdapterCommon::m_AdapterInstances);
+    ASSERT(remainingInstances >= 0);
+    if (remainingInstances == 0)
+    {
+        CSaveData::DestroyWorkItems();
+    }
 } // ~CAdapterCommon  
 
 //=============================================================================
@@ -610,11 +605,23 @@ Return Value:
     m_pHW->MixerReset();
 
     //
-    // Initialize SaveData class.
+    // SaveData is a legacy sample facility with process-global worker state.
+    // AudioNT disables file capture in production; keep the facility available
+    // only for a single diagnostic adapter instance.
     //
-    CSaveData::SetDeviceObject(DeviceObject);   //device object is needed by CSaveData
-    ntStatus = CSaveData::InitializeWorkItems(DeviceObject);
-    IF_FAILED_JUMP(ntStatus, Done);
+    if (!g_DoNotCreateDataFiles)
+    {
+        if (CAdapterCommon::m_AdapterInstances != 1)
+        {
+            ntStatus = STATUS_NOT_SUPPORTED;
+            DPF(D_ERROR, ("SaveData is not supported with multiple AudioNT adapters"));
+            goto Done;
+        }
+
+        CSaveData::SetDeviceObject(DeviceObject);
+        ntStatus = CSaveData::InitializeWorkItems(DeviceObject);
+        IF_FAILED_JUMP(ntStatus, Done);
+    }
 Done:
 
     return ntStatus;

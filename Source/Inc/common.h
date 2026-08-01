@@ -120,12 +120,7 @@ Abstract:
 #define MINTOPORT_POOLTAG           'RTNM'
 #define MINADAPTER_POOLTAG          'uAyS'
 
-typedef enum
-{
-    eSpeakerDevice = 0,
-    eMicArrayDevice1,
-    eMaxDeviceType,
-} eDeviceType;
+#include "audiontbus.h"
 
 //
 // Signal processing modes and default formats structs.

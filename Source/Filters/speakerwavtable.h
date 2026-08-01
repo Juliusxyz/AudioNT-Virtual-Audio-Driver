@@ -25,7 +25,7 @@ Abstract:
 // Change bits-per-sample range:
 //
 #define SPEAKER_HOST_MIN_BITS_PER_SAMPLE    16
-#define SPEAKER_HOST_MAX_BITS_PER_SAMPLE    24
+#define SPEAKER_HOST_MAX_BITS_PER_SAMPLE    32
 
 //
 // Change sample-rate range:
@@ -51,7 +51,7 @@ static
 KSDATAFORMAT_WAVEFORMATEXTENSIBLE SpeakerHostPinSupportedDeviceFormats[] =
 {
     //-------------------------------------------------
-    // 0) 16-bit, Stereo, 48 kHz (DVD Quality)
+    // 0) 32-bit PCM, Stereo, 48 kHz (AudioNT prototype bridge format)
     //-------------------------------------------------
     {
         {
@@ -68,12 +68,12 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE SpeakerHostPinSupportedDeviceFormats[] =
                 WAVE_FORMAT_EXTENSIBLE,                  // wFormatTag
                 2,                                       // nChannels
                 48000,                                   // nSamplesPerSec
-                48000 * 2 * 16 / 8,                      // nAvgBytesPerSec
-                2 * 16 / 8,                              // nBlockAlign
-                16,                                      // wBitsPerSample
+                48000 * 2 * 32 / 8,                      // nAvgBytesPerSec
+                2 * 32 / 8,                              // nBlockAlign
+                32,                                      // wBitsPerSample
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
-            16,                                         // wValidBitsPerSample
+            32,                                         // wValidBitsPerSample
             KSAUDIO_SPEAKER_STEREO,                     // dwChannelMask
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }

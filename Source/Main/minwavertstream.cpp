@@ -4,6 +4,7 @@
 #include "endpoints.h"
 #include "minwavert.h"
 #include "minwavertstream.h"
+#include "pcmbridge.h"
 #define MINWAVERTSTREAM_POOLTAG 'SRWM'
 
 #pragma warning (disable : 4127)
@@ -1198,6 +1199,11 @@ NTSTATUS CMiniportWaveRTStream::SetState
 
             KeReleaseSpinLock(&m_PositionSpinLock, oldIrql);
 
+            if (m_bCapture)
+            {
+                AudioNtMicrophoneBridgeReset();
+            }
+
             // Wait until all work items are completed.
             if (!m_bCapture && !g_DoNotCreateDataFiles)
             {
@@ -1364,11 +1370,7 @@ VOID CMiniportWaveRTStream::UpdatePosition
             m_bLastBufferRendered = TRUE;
         }
 
-        if (!g_DoNotCreateDataFiles)
-        {
-            // Read from buffer and write to a file.
-            ReadBytes(ByteDisplacement);
-        }
+        ReadBytes(ByteDisplacement);
     }
     
     // Increment the DMA position by the number of bytes displaced since the last
@@ -1413,8 +1415,7 @@ ByteDisplacement - # of bytes to process.
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
         
-        // Instead of generating a tone, just output silence
-        RtlZeroMemory(m_pDmaBuffer + bufferOffset, runWrite);
+        AudioNtMicrophoneBridgeRead(m_pDmaBuffer + bufferOffset, runWrite);
            	
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
@@ -1446,7 +1447,10 @@ ByteDisplacement - # of bytes to process.
     while (ByteDisplacement > 0)
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
-        m_SaveData.WriteData(m_pDmaBuffer + bufferOffset, runWrite);
+        if (!g_DoNotCreateDataFiles)
+        {
+            m_SaveData.WriteData(m_pDmaBuffer + bufferOffset, runWrite);
+        }
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
     }
@@ -1649,4 +1653,3 @@ End:
     return;
 }
 //=============================================================================
-

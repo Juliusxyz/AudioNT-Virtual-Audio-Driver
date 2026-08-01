@@ -71,28 +71,80 @@ PHYSICALCONNECTIONTABLE SpeakerTopologyPhysicalConnections[] =
     }
 };
 
-static
-ENDPOINT_MINIPAIR SpeakerMiniports =
-{
-    eSpeakerDevice,
-    L"TopologySpeaker",                                     // make sure this or the template name matches with KSNAME_TopologySpeaker in the inf's [Strings] section 
-    NULL,                                                   // optional template name
-    CreateMiniportTopologyVirtualAudioDriver,
-    &SpeakerTopoMiniportFilterDescriptor,
-    0, NULL,                                                // Interface properties
-    L"WaveSpeaker",                                         // make sure this or the template name matches with KSNAME_WaveSpeaker in the inf's [Strings] section
-    NULL,                                                   // optional template name
-    CreateMiniportWaveRTVirtualAudioDriver,
-    &SpeakerWaveMiniportFilterDescriptor,
-    0,                                                      // Interface properties
-    NULL,
-    SPEAKER_DEVICE_MAX_CHANNELS,
-    SpeakerPinDeviceFormatsAndModes,
-    SIZEOF_ARRAY(SpeakerPinDeviceFormatsAndModes),
-    SpeakerTopologyPhysicalConnections,
-    SIZEOF_ARRAY(SpeakerTopologyPhysicalConnections),
-    ENDPOINT_NO_FLAGS,
-};
+#define AUDIONT_RENDER_INTERFACE_PROPERTIES(endpoint, friendlyName)  \
+static WCHAR endpoint##RenderInterfaceFriendlyName[] = friendlyName; \
+static const VIRTUALAUDIODRIVER_DEVPROPERTY endpoint##RenderInterfaceProperties[] = \
+{                                                                     \
+    {                                                                 \
+        &DEVPKEY_DeviceInterface_FriendlyName,                         \
+        DEVPROP_TYPE_STRING_INDIRECT,                                 \
+        sizeof(endpoint##RenderInterfaceFriendlyName),                \
+        endpoint##RenderInterfaceFriendlyName                         \
+    }                                                                 \
+}
+
+AUDIONT_RENDER_INTERFACE_PROPERTIES(Game, L"AudioNT - Game");
+AUDIONT_RENDER_INTERFACE_PROPERTIES(Chat, L"AudioNT - Chat");
+AUDIONT_RENDER_INTERFACE_PROPERTIES(Media, L"AudioNT - Media");
+AUDIONT_RENDER_INTERFACE_PROPERTIES(Aux, L"AudioNT - AUX");
+
+#define AUDIONT_RENDER_MINIPAIR(symbol, endpoint, deviceType, topologyName, topologyDescriptor, waveName) \
+static ENDPOINT_MINIPAIR symbol =                                      \
+{                                                                      \
+    deviceType,                                                        \
+    topologyName,                                                      \
+    NULL,                                                              \
+    CreateMiniportTopologyVirtualAudioDriver,                          \
+    topologyDescriptor,                                                \
+    SIZEOF_ARRAY(endpoint##RenderInterfaceProperties),                 \
+    endpoint##RenderInterfaceProperties,                               \
+    waveName,                                                          \
+    NULL,                                                              \
+    CreateMiniportWaveRTVirtualAudioDriver,                            \
+    &SpeakerWaveMiniportFilterDescriptor,                              \
+    SIZEOF_ARRAY(endpoint##RenderInterfaceProperties),                 \
+    endpoint##RenderInterfaceProperties,                               \
+    SPEAKER_DEVICE_MAX_CHANNELS,                                       \
+    SpeakerPinDeviceFormatsAndModes,                                   \
+    SIZEOF_ARRAY(SpeakerPinDeviceFormatsAndModes),                     \
+    SpeakerTopologyPhysicalConnections,                               \
+    SIZEOF_ARRAY(SpeakerTopologyPhysicalConnections),                  \
+    ENDPOINT_NO_FLAGS,                                                 \
+}
+
+AUDIONT_RENDER_MINIPAIR(
+    GameMiniports,
+    Game,
+    eAudioNtGameDevice,
+    L"AudioNTTopologyGame",
+    &GameSpeakerTopoMiniportFilterDescriptor,
+    L"AudioNTWaveGame");
+
+AUDIONT_RENDER_MINIPAIR(
+    ChatMiniports,
+    Chat,
+    eAudioNtChatDevice,
+    L"AudioNTTopologyChat",
+    &ChatSpeakerTopoMiniportFilterDescriptor,
+    L"AudioNTWaveChat");
+
+AUDIONT_RENDER_MINIPAIR(
+    MediaMiniports,
+    Media,
+    eAudioNtMediaDevice,
+    L"AudioNTTopologyMedia",
+    &MediaSpeakerTopoMiniportFilterDescriptor,
+    L"AudioNTWaveMedia");
+
+AUDIONT_RENDER_MINIPAIR(
+    AuxMiniports,
+    Aux,
+    eAudioNtAuxDevice,
+    L"AudioNTTopologyAux",
+    &AuxSpeakerTopoMiniportFilterDescriptor,
+    L"AudioNTWaveAux");
+
+#undef AUDIONT_RENDER_MINIPAIR
 
 //
 // Capture miniports.
@@ -119,15 +171,15 @@ PHYSICALCONNECTIONTABLE MicArray1TopologyPhysicalConnections[] =
 };
 
 static
-ENDPOINT_MINIPAIR MicArray1Miniports =
+ENDPOINT_MINIPAIR MicrophoneMiniports =
 {
-    eMicArrayDevice1,
-    L"TopologyMicArray1",                   // make sure this or the template name matches with KSNAME_TopologyMicArray1 in the inf's [Strings] section 
+    eAudioNtMicrophoneDevice,
+    L"AudioNTTopologyMicrophone",
     NULL,                                   // optional template name
     CreateMicArrayMiniportTopology,
     &MicArray1TopoMiniportFilterDescriptor,
     0, NULL,                                // Interface properties
-    L"WaveMicArray1",                       // make sure this or the tempalte name matches with KSNAME_WaveMicArray1 in the inf's [Strings] section
+    L"AudioNTWaveMicrophone",
     NULL,                                   // optional template name
     CreateMiniportWaveRTVirtualAudioDriver,
     &MicArrayWaveMiniportFilterDescriptor,
@@ -150,7 +202,10 @@ ENDPOINT_MINIPAIR MicArray1Miniports =
 static
 PENDPOINT_MINIPAIR  g_RenderEndpoints[] = 
 {
-    &SpeakerMiniports,
+    &GameMiniports,
+    &ChatMiniports,
+    &MediaMiniports,
+    &AuxMiniports,
 };
 
 #define g_cRenderEndpoints  (SIZEOF_ARRAY(g_RenderEndpoints))
@@ -163,7 +218,7 @@ PENDPOINT_MINIPAIR  g_RenderEndpoints[] =
 static
 PENDPOINT_MINIPAIR  g_CaptureEndpoints[] =
 {
-    &MicArray1Miniports,
+    &MicrophoneMiniports,
 };
 
 #define g_cCaptureEndpoints (SIZEOF_ARRAY(g_CaptureEndpoints))

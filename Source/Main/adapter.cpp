@@ -22,6 +22,8 @@ Abstract:
 #include "definitions.h"
 #include "endpoints.h"
 #include "minipairs.h"
+#include "control.h"
+#include "pcmbridge.h"
 
 typedef void (*fnPcDriverUnload) (PDRIVER_OBJECT);
 fnPcDriverUnload gPCDriverUnloadRoutine = NULL;
@@ -103,6 +105,8 @@ Environment:
     {
         goto Done;
     }
+
+    AudioNtControlShutdown(DriverObject);
     
     //
     // Invoke first the port unload.
@@ -111,6 +115,8 @@ Environment:
     {
         gPCDriverUnloadRoutine(DriverObject);
     }
+
+    AudioNtMicrophoneBridgeShutdown();
 
     //
     // Unload WDF driver object. 
@@ -324,6 +330,12 @@ Return Value:
         DPF(D_ERROR, ("Registry Configuration error 0x%x", ntStatus)),
         Done);
 
+    ntStatus = AudioNtMicrophoneBridgeInitialize();
+    IF_FAILED_ACTION_JUMP(
+        ntStatus,
+        DPF(D_ERROR, ("AudioNtMicrophoneBridgeInitialize failed, 0x%x", ntStatus)),
+        Done);
+
     //
     // Tell the class driver to initialize the driver.
     //
@@ -346,6 +358,12 @@ Return Value:
     gPCDriverUnloadRoutine = DriverObject->DriverUnload;
     DriverObject->DriverUnload = DriverUnload;
 
+    ntStatus = AudioNtControlInitialize(DriverObject);
+    IF_FAILED_ACTION_JUMP(
+        ntStatus,
+        DPF(D_ERROR, ("AudioNtControlInitialize failed, 0x%x", ntStatus)),
+        Done);
+
     //
     // All done.
     //
@@ -355,12 +373,21 @@ Done:
 
     if (!NT_SUCCESS(ntStatus))
     {
+        AudioNtControlShutdown(DriverObject);
+
+        if (gPCDriverUnloadRoutine != NULL)
+        {
+            gPCDriverUnloadRoutine(DriverObject);
+            gPCDriverUnloadRoutine = NULL;
+        }
+
         if (WdfGetDriver() != NULL)
         {
             WdfDriverMiniportUnload(WdfGetDriver());
         }
 
         ReleaseRegistryStringBuffer();
+        AudioNtMicrophoneBridgeShutdown();
     }
     
     return ntStatus;
@@ -371,6 +398,84 @@ Done:
 // DO_DEVICE_INITIALIZING is cleared in PcAddAdapterDevice
 #pragma warning(disable:28152)
 #pragma code_seg("PAGE")
+//=============================================================================
+NTSTATUS
+GetAudioNtDeviceType(
+    _In_ PDEVICE_OBJECT DeviceObject,
+    _Out_ eDeviceType* DeviceType
+)
+{
+    PAGED_CODE();
+
+    if (DeviceObject == NULL || DeviceType == NULL)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    *DeviceType = eMaxDeviceType;
+
+    PDEVICE_OBJECT physicalDeviceObject = NULL;
+    ULONG hardwareIdsSize = 0;
+    PWSTR hardwareIds = NULL;
+    NTSTATUS ntStatus = PcGetPhysicalDeviceObject(DeviceObject, &physicalDeviceObject);
+    IF_FAILED_JUMP(ntStatus, Exit);
+
+    ntStatus = IoGetDeviceProperty(
+        physicalDeviceObject,
+        DevicePropertyHardwareID,
+        0,
+        NULL,
+        &hardwareIdsSize);
+    if (ntStatus != STATUS_BUFFER_TOO_SMALL || hardwareIdsSize < sizeof(WCHAR) * 2)
+    {
+        goto Exit;
+    }
+
+    hardwareIds = static_cast<PWSTR>(
+        ExAllocatePool2(POOL_FLAG_PAGED, hardwareIdsSize, MINADAPTER_POOLTAG));
+    if (hardwareIds == NULL)
+    {
+        ntStatus = STATUS_INSUFFICIENT_RESOURCES;
+        goto Exit;
+    }
+
+    ntStatus = IoGetDeviceProperty(
+        physicalDeviceObject,
+        DevicePropertyHardwareID,
+        hardwareIdsSize,
+        hardwareIds,
+        &hardwareIdsSize);
+    if (NT_SUCCESS(ntStatus))
+    {
+        for (PCWSTR hardwareId = hardwareIds; *hardwareId != L'\0';)
+        {
+            *DeviceType = AudioNtDeviceTypeForHardwareId(hardwareId);
+            if (*DeviceType != eMaxDeviceType)
+            {
+                break;
+            }
+
+            while (*hardwareId != L'\0')
+            {
+                ++hardwareId;
+            }
+            ++hardwareId;
+        }
+
+        if (*DeviceType == eMaxDeviceType)
+        {
+            ntStatus = STATUS_NOT_SUPPORTED;
+        }
+    }
+
+Exit:
+    if (hardwareIds != NULL)
+    {
+        ExFreePoolWithTag(hardwareIds, MINADAPTER_POOLTAG);
+    }
+    return ntStatus;
+}
+
 //=============================================================================
 NTSTATUS AddDevice
 ( 
@@ -407,11 +512,8 @@ Return Value:
     PAGED_CODE();
 
     NTSTATUS        ntStatus;
-    ULONG           maxObjects;
 
     DPF(D_TERSE, ("[AddDevice]"));
-
-    maxObjects = g_MaxMiniports;
 
     // Tell the class driver to add the device.
     //
@@ -421,7 +523,7 @@ Return Value:
             DriverObject,
             PhysicalDeviceObject,
             PCPFNSTARTDEVICE(StartDevice),
-            maxObjects,
+            2,
             0
         );
 
@@ -668,6 +770,34 @@ Exit:
     return ntStatus;
 }
 
+#pragma code_seg("PAGE")
+NTSTATUS
+InstallAudioNtEndpoint(
+    _In_ PDEVICE_OBJECT DeviceObject,
+    _In_ PIRP Irp,
+    _In_ PADAPTERCOMMON AdapterCommon,
+    _In_ eDeviceType DeviceType
+)
+{
+    PAGED_CODE();
+
+    switch (DeviceType)
+    {
+    case eAudioNtGameDevice:
+        return InstallEndpointRenderFilters(DeviceObject, Irp, AdapterCommon, &GameMiniports);
+    case eAudioNtChatDevice:
+        return InstallEndpointRenderFilters(DeviceObject, Irp, AdapterCommon, &ChatMiniports);
+    case eAudioNtMediaDevice:
+        return InstallEndpointRenderFilters(DeviceObject, Irp, AdapterCommon, &MediaMiniports);
+    case eAudioNtAuxDevice:
+        return InstallEndpointRenderFilters(DeviceObject, Irp, AdapterCommon, &AuxMiniports);
+    case eAudioNtMicrophoneDevice:
+        return InstallEndpointCaptureFilters(DeviceObject, Irp, AdapterCommon, &MicrophoneMiniports);
+    default:
+        return STATUS_NOT_SUPPORTED;
+    }
+}
+
 //=============================================================================
 #pragma code_seg("PAGE")
 NTSTATUS
@@ -713,9 +843,13 @@ Return Value:
 
     PADAPTERCOMMON              pAdapterCommon  = NULL;
     PUNKNOWN                    pUnknownCommon  = NULL;
+    eDeviceType                 deviceType      = eMaxDeviceType;
     PortClassDeviceContext*     pExtension      = static_cast<PortClassDeviceContext*>(DeviceObject->DeviceExtension);
 
     DPF_ENTER(("[StartDevice]"));
+
+    ntStatus = GetAudioNtDeviceType(DeviceObject, &deviceType);
+    IF_FAILED_JUMP(ntStatus, Exit);
 
     //
     // create a new adapter common object
@@ -740,15 +874,9 @@ Return Value:
     IF_FAILED_JUMP(ntStatus, Exit);
 
     //
-    // Install wave+topology filters for render devices
+    // Install only the endpoint assigned to this PnP device instance.
     //
-    ntStatus = InstallAllRenderFilters(DeviceObject, Irp, pAdapterCommon);
-    IF_FAILED_JUMP(ntStatus, Exit);
-
-    //
-    // Install wave+topology filters for capture devices
-    //
-    ntStatus = InstallAllCaptureFilters(DeviceObject, Irp, pAdapterCommon);
+    ntStatus = InstallAudioNtEndpoint(DeviceObject, Irp, pAdapterCommon, deviceType);
     IF_FAILED_JUMP(ntStatus, Exit);
 
 Exit:
@@ -842,4 +970,3 @@ Return Value:
 }
 
 #pragma code_seg()
-
