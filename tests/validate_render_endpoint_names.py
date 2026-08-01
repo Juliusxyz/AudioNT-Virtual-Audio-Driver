@@ -70,6 +70,8 @@ def main() -> int:
 
     if "DEVPKEY_DeviceInterface_FriendlyName" not in minipairs:
         errors.append("render interfaces do not publish a Windows adapter friendly name")
+    if "DEVPROP_TYPE_STRING_INDIRECT" not in minipairs:
+        errors.append("render interface friendly names do not use the audio endpoint property type")
     if "endpoint##RenderInterfaceProperties" not in minipairs:
         errors.append("render minipairs do not bind their endpoint-specific interface properties")
     wave_binding = (

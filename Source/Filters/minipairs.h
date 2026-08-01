@@ -77,7 +77,7 @@ static const VIRTUALAUDIODRIVER_DEVPROPERTY endpoint##RenderInterfaceProperties[
 {                                                                     \
     {                                                                 \
         &DEVPKEY_DeviceInterface_FriendlyName,                         \
-        DEVPROP_TYPE_STRING,                                          \
+        DEVPROP_TYPE_STRING_INDIRECT,                                 \
         sizeof(endpoint##RenderInterfaceFriendlyName),                \
         endpoint##RenderInterfaceFriendlyName                         \
     }                                                                 \
