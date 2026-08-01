@@ -21,6 +21,7 @@ Abstract:
 #include <wdf.h>
 #include <wdfminiport.h>
 #include <Ntstrsafe.h>
+#include <devpkey.h>
 #include "NewDelete.h"
 
 //=============================================================================

@@ -71,7 +71,24 @@ PHYSICALCONNECTIONTABLE SpeakerTopologyPhysicalConnections[] =
     }
 };
 
-#define AUDIONT_RENDER_MINIPAIR(symbol, deviceType, topologyName, topologyDescriptor, waveName) \
+#define AUDIONT_RENDER_INTERFACE_PROPERTIES(endpoint, friendlyName)  \
+static WCHAR endpoint##RenderInterfaceFriendlyName[] = friendlyName; \
+static const VIRTUALAUDIODRIVER_DEVPROPERTY endpoint##RenderInterfaceProperties[] = \
+{                                                                     \
+    {                                                                 \
+        &DEVPKEY_DeviceInterface_FriendlyName,                         \
+        DEVPROP_TYPE_STRING,                                          \
+        sizeof(endpoint##RenderInterfaceFriendlyName),                \
+        endpoint##RenderInterfaceFriendlyName                         \
+    }                                                                 \
+}
+
+AUDIONT_RENDER_INTERFACE_PROPERTIES(Game, L"AudioNT - Game");
+AUDIONT_RENDER_INTERFACE_PROPERTIES(Chat, L"AudioNT - Chat");
+AUDIONT_RENDER_INTERFACE_PROPERTIES(Media, L"AudioNT - Media");
+AUDIONT_RENDER_INTERFACE_PROPERTIES(Aux, L"AudioNT - AUX");
+
+#define AUDIONT_RENDER_MINIPAIR(symbol, endpoint, deviceType, topologyName, topologyDescriptor, waveName) \
 static ENDPOINT_MINIPAIR symbol =                                      \
 {                                                                      \
     deviceType,                                                        \
@@ -79,7 +96,8 @@ static ENDPOINT_MINIPAIR symbol =                                      \
     NULL,                                                              \
     CreateMiniportTopologyVirtualAudioDriver,                          \
     topologyDescriptor,                                                \
-    0, NULL,                                                           \
+    SIZEOF_ARRAY(endpoint##RenderInterfaceProperties),                 \
+    endpoint##RenderInterfaceProperties,                               \
     waveName,                                                          \
     NULL,                                                              \
     CreateMiniportWaveRTVirtualAudioDriver,                            \
@@ -96,6 +114,7 @@ static ENDPOINT_MINIPAIR symbol =                                      \
 
 AUDIONT_RENDER_MINIPAIR(
     GameMiniports,
+    Game,
     eAudioNtGameDevice,
     L"AudioNTTopologyGame",
     &GameSpeakerTopoMiniportFilterDescriptor,
@@ -103,6 +122,7 @@ AUDIONT_RENDER_MINIPAIR(
 
 AUDIONT_RENDER_MINIPAIR(
     ChatMiniports,
+    Chat,
     eAudioNtChatDevice,
     L"AudioNTTopologyChat",
     &ChatSpeakerTopoMiniportFilterDescriptor,
@@ -110,6 +130,7 @@ AUDIONT_RENDER_MINIPAIR(
 
 AUDIONT_RENDER_MINIPAIR(
     MediaMiniports,
+    Media,
     eAudioNtMediaDevice,
     L"AudioNTTopologyMedia",
     &MediaSpeakerTopoMiniportFilterDescriptor,
@@ -117,6 +138,7 @@ AUDIONT_RENDER_MINIPAIR(
 
 AUDIONT_RENDER_MINIPAIR(
     AuxMiniports,
+    Aux,
     eAudioNtAuxDevice,
     L"AudioNTTopologyAux",
     &AuxSpeakerTopoMiniportFilterDescriptor,

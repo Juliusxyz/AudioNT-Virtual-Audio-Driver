@@ -15,6 +15,13 @@ EXPECTED = {
     "Aux": ("AUDIONT_AUX_ENDPOINT_CATEGORY", "260DD4B5-CC8D-478B-A150-0B9C28022BA5"),
 }
 
+DISPLAY_NAMES = {
+    "Game": "AudioNT - Game",
+    "Chat": "AudioNT - Chat",
+    "Media": "AudioNT - Media",
+    "Aux": "AudioNT - AUX",
+}
+
 
 def read_inf(path: Path) -> str:
     raw = path.read_bytes()
@@ -39,6 +46,7 @@ def read_guid(source: str, symbol: str) -> str | None:
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     topology = (root / "Source/Filters/speakertoptable.h").read_text(encoding="utf-8")
+    minipairs = (root / "Source/Filters/minipairs.h").read_text(encoding="utf-8")
     inf = read_inf(root / "Source/Main/VirtualAudioDriver.inx")
     errors: list[str] = []
 
@@ -55,6 +63,15 @@ def main() -> int:
             errors.append(f"{endpoint} device-specific friendly name is not registered")
         if f'GUID.AudioNt{endpoint}Endpoint="{{{guid}}}"' not in inf:
             errors.append(f"{endpoint} INF category GUID is missing or mismatched")
+        if f'AUDIONT_RENDER_INTERFACE_PROPERTIES({endpoint}, L"{DISPLAY_NAMES[endpoint]}")' not in minipairs:
+            errors.append(f"{endpoint} render interface friendly name is missing")
+        if f"{endpoint}Miniports,\n    {endpoint}," not in minipairs:
+            errors.append(f"{endpoint} render interface properties are not bound to the minipair")
+
+    if "DEVPKEY_DeviceInterface_FriendlyName" not in minipairs:
+        errors.append("render interfaces do not publish a Windows adapter friendly name")
+    if "endpoint##RenderInterfaceProperties" not in minipairs:
+        errors.append("render minipairs do not bind their endpoint-specific interface properties")
 
     if "&KSNODETYPE_SPEAKER" in topology:
         errors.append("hard-coded speaker endpoint category remains")
