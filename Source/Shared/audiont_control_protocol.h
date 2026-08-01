@@ -18,7 +18,7 @@ using AudioNtUInt64 = __UINT64_TYPE__;
 static_assert(sizeof(AudioNtUInt32) == 4, "AudioNT wire uint32 must be 4 bytes");
 static_assert(sizeof(AudioNtUInt64) == 8, "AudioNT wire uint64 must be 8 bytes");
 
-#define AUDIONT_CONTROL_PROTOCOL_VERSION 1u
+#define AUDIONT_CONTROL_PROTOCOL_VERSION 2u
 #define AUDIONT_MIC_SAMPLE_RATE 48000u
 #define AUDIONT_MIC_CHANNELS 1u
 #define AUDIONT_MIC_BITS_PER_SAMPLE 32u
@@ -100,7 +100,7 @@ constexpr AudioNtProtocolValidation AudioNtValidateMicrophoneWrite(
     }
 
     const size_t expectedPayloadBytes =
-        static_cast<size_t>(header->FrameCount) * sizeof(float);
+        static_cast<size_t>(header->FrameCount) * sizeof(AudioNtUInt32);
     if (header->PayloadBytes != expectedPayloadBytes ||
         inputLength != sizeof(AudioNtMicrophoneWriteHeader) + expectedPayloadBytes)
     {

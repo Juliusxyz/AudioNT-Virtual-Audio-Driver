@@ -92,7 +92,7 @@ void microphone_ring_overflow_keeps_newest_data()
 
 int main()
 {
-    static_assert(AUDIONT_CONTROL_PROTOCOL_VERSION == 1);
+    static_assert(AUDIONT_CONTROL_PROTOCOL_VERSION == 2);
     static_assert(AUDIONT_MIC_SAMPLE_RATE == 48000);
     static_assert(AUDIONT_MIC_CHANNELS == 1);
     static_assert(AUDIONT_MIC_BITS_PER_SAMPLE == 32);

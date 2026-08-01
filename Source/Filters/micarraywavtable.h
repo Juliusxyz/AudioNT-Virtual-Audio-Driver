@@ -20,7 +20,7 @@ Abstract:-
 //
 #define MICARRAY_RAW_CHANNELS                   1       // Mono virtual microphone
 #define MICARRAY_DEVICE_MAX_CHANNELS            1       // Max channels overall
-#define MICARRAY_32_BITS_PER_SAMPLE_FLOAT       32      // 32 Bits Per Sample
+#define MICARRAY_32_BITS_PER_SAMPLE_PCM         32      // 32 Bits Per Sample
 #define MICARRAY_RAW_SAMPLE_RATE                48000   // Raw sample rate
 
 //
@@ -35,7 +35,7 @@ static
 KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicArrayPinSupportedDeviceFormats[] =
 {
     //------------------------------------------------------------------------
-    // 48 KHz, 32-bit IEEE float, mono
+    // 48 KHz, 32-bit PCM, mono
     //------------------------------------------------------------------------
     {
         {
@@ -44,7 +44,7 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicArrayPinSupportedDeviceFormats[] =
             0,
             0,
             STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT),
+            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
             STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
         },
         {
@@ -59,7 +59,7 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicArrayPinSupportedDeviceFormats[] =
             },
             32,                              // Samples (wValidBitsPerSample)
             KSAUDIO_SPEAKER_MONO,            // dwChannelMask
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     },
 };
@@ -139,12 +139,12 @@ KSDATARANGE_AUDIO MicArrayPinDataRangesRawStream[] =
             0,
             0,
             STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT),
+            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
             STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
         },
         MICARRAY_RAW_CHANNELS,
-        MICARRAY_32_BITS_PER_SAMPLE_FLOAT,
-        MICARRAY_32_BITS_PER_SAMPLE_FLOAT,
+        MICARRAY_32_BITS_PER_SAMPLE_PCM,
+        MICARRAY_32_BITS_PER_SAMPLE_PCM,
         MICARRAY_RAW_SAMPLE_RATE,
         MICARRAY_RAW_SAMPLE_RATE
     },

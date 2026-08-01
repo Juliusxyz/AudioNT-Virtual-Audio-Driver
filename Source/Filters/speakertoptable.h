@@ -14,6 +14,17 @@ Abstract:
 #ifndef _VIRTUALAUDIODRIVER_SPEAKERTOPTABLE_H_
 #define _VIRTUALAUDIODRIVER_SPEAKERTOPTABLE_H_
 
+// Device-specific endpoint categories avoid the Windows hard-coded "Speakers"
+// label and let each fixed AudioNT render bus expose its own stable name.
+DEFINE_GUID(AUDIONT_GAME_ENDPOINT_CATEGORY,
+    0xd4be6922, 0xc928, 0x421b, 0xa0, 0xf3, 0x45, 0x80, 0x10, 0x6e, 0xa6, 0x7d);
+DEFINE_GUID(AUDIONT_CHAT_ENDPOINT_CATEGORY,
+    0xb4e176ec, 0xd673, 0x4431, 0x88, 0xb1, 0x16, 0x5c, 0x9f, 0xdf, 0x04, 0xaf);
+DEFINE_GUID(AUDIONT_MEDIA_ENDPOINT_CATEGORY,
+    0xbcf8d816, 0x5786, 0x47ee, 0x90, 0x96, 0x46, 0xa4, 0x0c, 0x74, 0x25, 0xc8);
+DEFINE_GUID(AUDIONT_AUX_ENDPOINT_CATEGORY,
+    0x260dd4b5, 0xcc8d, 0x478b, 0xa1, 0x50, 0x0b, 0x9c, 0x28, 0x02, 0x2b, 0xa5);
+
 //=============================================================================
 static
 KSDATARANGE SpeakerTopoPinDataRangesBridge[] =
@@ -34,52 +45,6 @@ static
 PKSDATARANGE SpeakerTopoPinDataRangePointersBridge[] =
 {
   &SpeakerTopoPinDataRangesBridge[0]
-};
-
-//=============================================================================
-static
-PCPIN_DESCRIPTOR SpeakerTopoMiniportPins[] =
-{
-  // KSPIN_TOPO_WAVEOUT_SOURCE
-  {
-    0,
-    0,
-    0,                                                  // InstanceCount
-    NULL,                                               // AutomationTable
-    {                                                   // KsPinDescriptor
-      0,                                                // InterfacesCount
-      NULL,                                             // Interfaces
-      0,                                                // MediumsCount
-      NULL,                                             // Mediums
-      SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),// DataRangesCount
-      SpeakerTopoPinDataRangePointersBridge,            // DataRanges
-      KSPIN_DATAFLOW_IN,                                // DataFlow
-      KSPIN_COMMUNICATION_NONE,                         // Communication
-      &KSCATEGORY_AUDIO,                                // Category
-      NULL,                                             // Name
-      0                                                 // Reserved
-    }
-  },
-  // KSPIN_TOPO_LINEOUT_DEST
-  {
-    0,
-    0,
-    0,                                                  // InstanceCount
-    NULL,                                               // AutomationTable
-    {                                                   // KsPinDescriptor
-      0,                                                // InterfacesCount
-      NULL,                                             // Interfaces
-      0,                                                // MediumsCount
-      NULL,                                             // Mediums
-      SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),// DataRangesCount
-      SpeakerTopoPinDataRangePointersBridge,            // DataRanges
-      KSPIN_DATAFLOW_OUT,                               // DataFlow
-      KSPIN_COMMUNICATION_NONE,                         // Communication
-      &KSNODETYPE_SPEAKER,                              // Category
-      NULL,                                             // Name
-      0                                                 // Reserved
-    }
-  }
 };
 
 //=============================================================================
@@ -186,21 +151,51 @@ PCPROPERTY_ITEM PropertiesSpeakerTopoFilter[] =
 DEFINE_PCAUTOMATION_TABLE_PROP(AutomationSpeakerTopoFilter, PropertiesSpeakerTopoFilter);
 
 //=============================================================================
-static
-PCFILTER_DESCRIPTOR SpeakerTopoMiniportFilterDescriptor =
-{
-  0,                                            // Version
-  &AutomationSpeakerTopoFilter,                 // AutomationTable
-  sizeof(PCPIN_DESCRIPTOR),                     // PinSize
-  SIZEOF_ARRAY(SpeakerTopoMiniportPins),        // PinCount
-  SpeakerTopoMiniportPins,                      // Pins
-  sizeof(PCNODE_DESCRIPTOR),                    // NodeSize
-  SIZEOF_ARRAY(SpeakerTopologyNodes),           // NodeCount
-  SpeakerTopologyNodes,                         // Nodes
-  SIZEOF_ARRAY(SpeakerTopoMiniportConnections), // ConnectionCount
-  SpeakerTopoMiniportConnections,               // Connections
-  0,                                            // CategoryCount
-  NULL                                          // Categories
-};
+#define AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR(symbol, endpointCategory)                 \
+static PCPIN_DESCRIPTOR symbol##SpeakerTopoMiniportPins[] =                          \
+{                                                                                    \
+  {                                                                                  \
+    0, 0, 0, NULL,                                                                   \
+    {                                                                                \
+      0, NULL, 0, NULL,                                                              \
+      SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),                           \
+      SpeakerTopoPinDataRangePointersBridge,                                         \
+      KSPIN_DATAFLOW_IN, KSPIN_COMMUNICATION_NONE,                                   \
+      &KSCATEGORY_AUDIO, NULL, 0                                                     \
+    }                                                                                \
+  },                                                                                 \
+  {                                                                                  \
+    0, 0, 0, NULL,                                                                   \
+    {                                                                                \
+      0, NULL, 0, NULL,                                                              \
+      SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),                           \
+      SpeakerTopoPinDataRangePointersBridge,                                         \
+      KSPIN_DATAFLOW_OUT, KSPIN_COMMUNICATION_NONE,                                  \
+      &endpointCategory, &endpointCategory, 0                                        \
+    }                                                                                \
+  }                                                                                  \
+};                                                                                   \
+static PCFILTER_DESCRIPTOR symbol##SpeakerTopoMiniportFilterDescriptor =             \
+{                                                                                    \
+  0,                                                                                 \
+  &AutomationSpeakerTopoFilter,                                                      \
+  sizeof(PCPIN_DESCRIPTOR),                                                          \
+  SIZEOF_ARRAY(symbol##SpeakerTopoMiniportPins),                                      \
+  symbol##SpeakerTopoMiniportPins,                                                    \
+  sizeof(PCNODE_DESCRIPTOR),                                                         \
+  SIZEOF_ARRAY(SpeakerTopologyNodes),                                                \
+  SpeakerTopologyNodes,                                                              \
+  SIZEOF_ARRAY(SpeakerTopoMiniportConnections),                                      \
+  SpeakerTopoMiniportConnections,                                                    \
+  0,                                                                                 \
+  NULL                                                                               \
+}
+
+AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR(Game, AUDIONT_GAME_ENDPOINT_CATEGORY);
+AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR(Chat, AUDIONT_CHAT_ENDPOINT_CATEGORY);
+AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR(Media, AUDIONT_MEDIA_ENDPOINT_CATEGORY);
+AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR(Aux, AUDIONT_AUX_ENDPOINT_CATEGORY);
+
+#undef AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR
 
 #endif // _VIRTUALAUDIODRIVER_SPEAKERTOPTABLE_H_
