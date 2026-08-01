@@ -48,3 +48,44 @@ constexpr AudioNtBusId AudioNtBusIdForDevice(eDeviceType deviceType)
         return AudioNtBusId::Count;
     }
 }
+
+constexpr wchar_t AudioNtAsciiLower(wchar_t value)
+{
+    return value >= L'A' && value <= L'Z' ? value + (L'a' - L'A') : value;
+}
+
+constexpr bool AudioNtHardwareIdEquals(const wchar_t* left, const wchar_t* right)
+{
+    if (left == nullptr || right == nullptr)
+    {
+        return false;
+    }
+
+    while (*left != L'\0' && *right != L'\0')
+    {
+        if (AudioNtAsciiLower(*left) != AudioNtAsciiLower(*right))
+        {
+            return false;
+        }
+
+        ++left;
+        ++right;
+    }
+
+    return *left == L'\0' && *right == L'\0';
+}
+
+constexpr eDeviceType AudioNtDeviceTypeForHardwareId(const wchar_t* hardwareId)
+{
+    return AudioNtHardwareIdEquals(hardwareId, L"ROOT\\AudioNTVirtualAudioGame")
+        ? eAudioNtGameDevice
+        : AudioNtHardwareIdEquals(hardwareId, L"ROOT\\AudioNTVirtualAudioChat")
+            ? eAudioNtChatDevice
+            : AudioNtHardwareIdEquals(hardwareId, L"ROOT\\AudioNTVirtualAudioMedia")
+                ? eAudioNtMediaDevice
+                : AudioNtHardwareIdEquals(hardwareId, L"ROOT\\AudioNTVirtualAudioAux")
+                    ? eAudioNtAuxDevice
+                    : AudioNtHardwareIdEquals(hardwareId, L"ROOT\\AudioNTVirtualAudioMicrophone")
+                        ? eAudioNtMicrophoneDevice
+                        : eMaxDeviceType;
+}

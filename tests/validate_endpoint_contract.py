@@ -30,6 +30,14 @@ EXPECTED_REFERENCE_STRINGS = {
     "KSNAME_TopologyMicrophone": "AudioNTTopologyMicrophone",
 }
 
+EXPECTED_DEVICE_MODELS = {
+    "VIRTUALAUDIODRIVER.Game.DeviceDesc": "ROOT\\AudioNTVirtualAudioGame",
+    "VIRTUALAUDIODRIVER.Chat.DeviceDesc": "ROOT\\AudioNTVirtualAudioChat",
+    "VIRTUALAUDIODRIVER.Media.DeviceDesc": "ROOT\\AudioNTVirtualAudioMedia",
+    "VIRTUALAUDIODRIVER.Aux.DeviceDesc": "ROOT\\AudioNTVirtualAudioAux",
+    "VIRTUALAUDIODRIVER.Microphone.DeviceDesc": "ROOT\\AudioNTVirtualAudioMicrophone",
+}
+
 
 @dataclass(frozen=True)
 class Endpoint:
@@ -213,10 +221,22 @@ def validate(inf_path: Path) -> list[str]:
         )
 
     model_lines = sections.get("VIRTUALAUDIODRIVER.NT$ARCH$.10.0...22000", [])
-    if not any("ROOT\\AudioNTVirtualAudio" in line for line in model_lines):
-        errors.append("hardware ID ROOT\\AudioNTVirtualAudio is missing")
+    actual_models: dict[str, str] = {}
+    for line in model_lines:
+        match = re.fullmatch(r"%([^%]+)%=VIRTUALAUDIODRIVER_SA,\s*(ROOT\\[^,]+)", line)
+        if match:
+            actual_models[match.group(1)] = match.group(2)
+    if actual_models != EXPECTED_DEVICE_MODELS:
+        errors.append(
+            "device model set mismatch: "
+            f"expected={EXPECTED_DEVICE_MODELS!r} actual={actual_models!r}"
+        )
+    if len(set(actual_models.values())) != len(EXPECTED_DEVICE_MODELS):
+        errors.append("each public endpoint requires its own PnP device ID")
     if "ROOT\\AudioNTPrototype" in text:
         errors.append("legacy hardware ID ROOT\\AudioNTPrototype remains")
+    if re.search(r"ROOT\\AudioNTVirtualAudio(?:\s|$)", text, flags=re.MULTILINE):
+        errors.append("single-adapter hardware ID ROOT\\AudioNTVirtualAudio remains")
 
     service_lines = sections.get("VIRTUALAUDIODRIVER_SA.NT.Services", [])
     if not any(line.startswith("AddService=AudioNTVirtualAudio,") for line in service_lines):
