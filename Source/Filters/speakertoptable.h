@@ -14,8 +14,8 @@ Abstract:
 #ifndef _VIRTUALAUDIODRIVER_SPEAKERTOPTABLE_H_
 #define _VIRTUALAUDIODRIVER_SPEAKERTOPTABLE_H_
 
-// Device-specific endpoint categories avoid the Windows hard-coded "Speakers"
-// label and let each fixed AudioNT render bus expose its own stable name.
+// Device-specific pin names let each fixed AudioNT render bus expose its own
+// stable name while retaining the standard Windows speaker endpoint category.
 DEFINE_GUID(AUDIONT_GAME_ENDPOINT_CATEGORY,
     0xd4be6922, 0xc928, 0x421b, 0xa0, 0xf3, 0x45, 0x80, 0x10, 0x6e, 0xa6, 0x7d);
 DEFINE_GUID(AUDIONT_CHAT_ENDPOINT_CATEGORY,
@@ -151,7 +151,7 @@ PCPROPERTY_ITEM PropertiesSpeakerTopoFilter[] =
 DEFINE_PCAUTOMATION_TABLE_PROP(AutomationSpeakerTopoFilter, PropertiesSpeakerTopoFilter);
 
 //=============================================================================
-#define AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR(symbol, endpointCategory)                 \
+#define AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR(symbol, endpointName)                     \
 static PCPIN_DESCRIPTOR symbol##SpeakerTopoMiniportPins[] =                          \
 {                                                                                    \
   {                                                                                  \
@@ -171,7 +171,7 @@ static PCPIN_DESCRIPTOR symbol##SpeakerTopoMiniportPins[] =                     
       SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),                           \
       SpeakerTopoPinDataRangePointersBridge,                                         \
       KSPIN_DATAFLOW_OUT, KSPIN_COMMUNICATION_NONE,                                  \
-      &endpointCategory, &endpointCategory, 0                                        \
+      &KSNODETYPE_SPEAKER, &endpointName, 0                                          \
     }                                                                                \
   }                                                                                  \
 };                                                                                   \

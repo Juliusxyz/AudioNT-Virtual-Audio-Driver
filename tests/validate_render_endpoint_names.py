@@ -52,7 +52,7 @@ def main() -> int:
 
     for endpoint, (symbol, guid) in EXPECTED.items():
         if f"AUDIONT_RENDER_TOPOLOGY_DESCRIPTOR({endpoint}, {symbol})" not in topology:
-            errors.append(f"{endpoint} does not use its unique topology category")
+            errors.append(f"{endpoint} does not use its unique topology name")
         if read_guid(topology, symbol) != guid:
             errors.append(f"{endpoint} category GUID is missing from topology")
         registration = (
@@ -81,8 +81,8 @@ def main() -> int:
     if wave_binding not in minipairs:
         errors.append("render WaveRT interfaces do not bind their endpoint-specific friendly names")
 
-    if "&KSNODETYPE_SPEAKER" in topology:
-        errors.append("hard-coded speaker endpoint category remains")
+    if "&KSNODETYPE_SPEAKER, &endpointName" not in topology:
+        errors.append("render endpoints do not combine the speaker category with unique pin names")
 
     for error in errors:
         print(f"FAILED: {error}", file=sys.stderr)
