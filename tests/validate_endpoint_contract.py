@@ -67,27 +67,70 @@ def assignment_value(lines: list[str], key: str) -> str:
 
 def parse_endpoint(
     direction: str,
-    install_section_name: str,
+    wave_install_section_name: str,
+    topology_install_section_name: str,
     sections: dict[str, list[str]],
     strings: dict[str, str],
 ) -> Endpoint:
-    install_lines = sections.get(install_section_name)
-    if install_lines is None:
-        raise ValueError(f"missing endpoint install section: {install_section_name}")
-    add_reg_name = assignment_value(install_lines, "AddReg")
-    add_reg_lines = sections.get(add_reg_name)
-    if add_reg_lines is None:
-        raise ValueError(f"missing endpoint AddReg section: {add_reg_name}")
+    wave_install_lines = sections.get(wave_install_section_name)
+    topology_install_lines = sections.get(topology_install_section_name)
+    if wave_install_lines is None:
+        raise ValueError(f"missing wave install section: {wave_install_section_name}")
+    if topology_install_lines is None:
+        raise ValueError(f"missing topology install section: {topology_install_section_name}")
 
-    friendly_lines = [line for line in add_reg_lines if ",FriendlyName,," in line]
-    bus_lines = [line for line in add_reg_lines if "%PKEY_AudioNT_BusId%" in line]
-    if len(friendly_lines) != 1 or len(bus_lines) != 1:
+    wave_add_reg_name = assignment_value(wave_install_lines, "AddReg")
+    topology_add_reg_name = assignment_value(topology_install_lines, "AddReg")
+    wave_add_reg_lines = sections.get(wave_add_reg_name)
+    topology_add_reg_lines = sections.get(topology_add_reg_name)
+    if wave_add_reg_lines is None:
+        raise ValueError(f"missing wave AddReg section: {wave_add_reg_name}")
+    if topology_add_reg_lines is None:
+        raise ValueError(f"missing topology AddReg section: {topology_add_reg_name}")
+
+    wave_friendly_lines = [line for line in wave_add_reg_lines if ",FriendlyName,," in line]
+    topology_friendly_lines = [
+        line for line in topology_add_reg_lines if ",FriendlyName,," in line
+    ]
+    bus_lines = [
+        line for line in topology_add_reg_lines if "%PKEY_AudioNT_BusId%" in line
+    ]
+    association_lines = [
+        line
+        for line in topology_add_reg_lines
+        if "%PKEY_AudioEndpoint_Association%" in line
+    ]
+    event_mode_lines = [
+        line
+        for line in topology_add_reg_lines
+        if "%PKEY_AudioEndpoint_Supports_EventDriven_Mode%" in line
+    ]
+    misplaced_endpoint_properties = [
+        line
+        for line in wave_add_reg_lines
+        if "PKEY_AudioEndpoint_" in line or "%PKEY_AudioNT_BusId%" in line
+    ]
+    if (
+        len(wave_friendly_lines) != 1
+        or len(topology_friendly_lines) != 1
+        or len(bus_lines) != 1
+        or len(association_lines) != 1
+        or len(event_mode_lines) != 1
+        or misplaced_endpoint_properties
+    ):
         raise ValueError(
-            f"{install_section_name} requires one FriendlyName and one AudioNT bus property"
+            f"{wave_install_section_name}/{topology_install_section_name} require matching "
+            "FriendlyName values and all endpoint properties on the topology interface"
         )
 
-    friendly_token = friendly_lines[0].split(",FriendlyName,,", 1)[1]
-    name = expand_percent(friendly_token, strings)
+    wave_friendly_token = wave_friendly_lines[0].split(",FriendlyName,,", 1)[1]
+    topology_friendly_token = topology_friendly_lines[0].split(",FriendlyName,,", 1)[1]
+    name = expand_percent(wave_friendly_token, strings)
+    topology_name = expand_percent(topology_friendly_token, strings)
+    if topology_name != name:
+        raise ValueError(
+            f"wave/topology FriendlyName mismatch: {name!r} != {topology_name!r}"
+        )
     bus_id = bus_lines[0].rsplit(",", 1)[1].strip().strip('"')
     return Endpoint(direction, name, bus_id)
 
@@ -101,6 +144,16 @@ def validate(inf_path: Path) -> list[str]:
     errors: list[str] = []
 
     interfaces = sections.get("VIRTUALAUDIODRIVER_SA.NT.Interfaces", [])
+    topology_declarations: dict[str, str] = {}
+    for declaration in interfaces:
+        if not declaration.startswith("AddInterface=") or "%KSCATEGORY_TOPOLOGY%" not in declaration:
+            continue
+        fields = [field.strip() for field in declaration.split(",")]
+        if len(fields) != 3:
+            errors.append(f"invalid AddInterface declaration: {declaration}")
+            continue
+        topology_declarations[expand_percent(fields[1], strings)] = fields[2]
+
     endpoints: list[Endpoint] = []
     for direction, category in (
         ("render", "%KSCATEGORY_RENDER%"),
@@ -117,8 +170,19 @@ def validate(inf_path: Path) -> list[str]:
                 errors.append(f"invalid AddInterface declaration: {declaration}")
                 continue
             try:
+                wave_name = expand_percent(fields[1], strings)
+                topology_name = f"Topology{wave_name.removeprefix('Wave')}"
+                topology_install_section_name = topology_declarations.get(topology_name)
+                if topology_install_section_name is None:
+                    raise ValueError(f"missing topology interface for {wave_name}")
                 endpoints.append(
-                    parse_endpoint(direction, fields[2], sections, strings)
+                    parse_endpoint(
+                        direction,
+                        fields[2],
+                        topology_install_section_name,
+                        sections,
+                        strings,
+                    )
                 )
             except ValueError as exception:
                 errors.append(str(exception))
